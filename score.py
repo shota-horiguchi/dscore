@@ -192,6 +192,9 @@ def print_table(file_scores, global_scores, n_digits=2,
                  'H(sys|ref)',  # Conditional entropy of sys given ref.
                  'MI', # Mutual information.
                  'NMI', # Normalized mutual information.
+                 'MISS', # Missed speech
+                 'FA', # False alarm speech
+                 'CF', # Speaker confusion
                 ]
     rows = sorted(file_scores, key=lambda x: x.file_id)
     rows.append(global_scores._replace(file_id='*** OVERALL ***'))
