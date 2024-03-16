@@ -73,16 +73,15 @@ import argparse
 import os
 import sys
 
-from tabulate import tabulate
-
-from .scorelib import __version__ as VERSION
-from .scorelib.argparse import ArgumentParser
-from .scorelib.rttm import load_rttm
-from .scorelib.turn import merge_turns, trim_turns
-from .scorelib.score import score
-from .scorelib.six import iterkeys
-from .scorelib.uem import gen_uem, load_uem
-from .scorelib.utils import error, info, warn, xor
+from scorelib import __version__ as VERSION
+from scorelib.argparse import ArgumentParser
+from scorelib.rttm import load_rttm
+from scorelib.turn import merge_turns, trim_turns
+from scorelib.score import score
+from scorelib.six import iterkeys
+from scorelib.table import table
+from scorelib.uem import gen_uem, load_uem
+from scorelib.utils import error, info, warn, xor
 
 
 class RefRTTMAction(argparse.Action):
@@ -160,8 +159,7 @@ def load_script_file(fn):
         return [line.decode('utf-8').strip() for line in f]
 
 
-def print_table(file_scores, global_scores, n_digits=2,
-                table_format='simple'):
+def print_table(file_scores, global_scores, n_digits=2):
     """Pretty print scores as table.
 
     Parameters
@@ -175,10 +173,6 @@ def print_table(file_scores, global_scores, n_digits=2,
     n_digits : int, optional
         Number of decimal digits to display.
         (Default: 3)
-
-    table_format : str, optional
-        Table format. Passed to ``tabulate.tabulate``.
-        (Default: 'simple')
     """
     col_names = ['File',
                  'DER', # Diarization error rate.
@@ -199,8 +193,8 @@ def print_table(file_scores, global_scores, n_digits=2,
     rows = sorted(file_scores, key=lambda x: x.file_id)
     rows.append(global_scores._replace(file_id='*** OVERALL ***'))
     floatfmt = '.%df' % n_digits
-    tbl = tabulate(
-        rows, headers=col_names, floatfmt=floatfmt, tablefmt=table_format)
+    tbl = table(
+        rows, headers=col_names, floatfmt=floatfmt)
     print(tbl)
 
 
@@ -246,10 +240,6 @@ def main():
     parser.add_argument(
         '--n_digits', nargs=None, default=2, type=int, metavar='INT',
         help='number of decimal places to print (default: %(default)s)')
-    parser.add_argument(
-        '--table_fmt', nargs=None, dest='table_format', default='simple',
-        metavar='STR',
-        help='tabulate table format (default: %(default)s)')
     parser.add_argument(
         '--version', action='version',
         version='%(prog)s ' + VERSION)
@@ -307,7 +297,7 @@ def main():
         jer_min_ref_dur=args.jer_min_ref_dur, collar=args.collar,
         ignore_overlaps=args.ignore_overlaps)
     print_table(
-        file_scores, global_scores, args.n_digits, args.table_format)
+        file_scores, global_scores, args.n_digits)
 
 
 if __name__ == '__main__':

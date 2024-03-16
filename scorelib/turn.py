@@ -95,16 +95,17 @@ def merge_turns(turns):
     for (file_id, speaker_id), speaker_turns in groupby(
             turns, lambda x: (x.file_id, x.speaker_id)):
         speaker_turns = list(speaker_turns)
-        speaker_it = IntervalTree.from_tuples(
-            [(turn.onset, turn.offset) for turn in speaker_turns])
+        speaker_it = [(turn.onset, turn.offset) for turn in speaker_turns]
+        # speaker_it = IntervalTree.from_tuples(
+        #     [(turn.onset, turn.offset) for turn in speaker_turns])
         n_turns_pre = len(speaker_it)
-        speaker_it.merge_overlaps()
+        speaker_it = _merge_turns(speaker_it)
         n_turns_post = len(speaker_it)
         if n_turns_post < n_turns_pre:
             speaker_turns = []
             for intrvl in speaker_it:
                 speaker_turns.append(
-                    Turn(intrvl.begin, intrvl.end, speaker_id=speaker_id,
+                    Turn(intrvl[0], intrvl[1], speaker_id=speaker_id,
                          file_id=file_id))
             speaker_turns = sorted(
                 speaker_turns, key=lambda x: (x.onset, x.offset))
@@ -113,6 +114,18 @@ def merge_turns(turns):
         new_turns.extend(speaker_turns)
     return new_turns
 
+def _merge_turns(turns):
+    cnt = 0
+    times = [(t, 1) for t, _ in turns] + [(t, -1) for _, t in turns]
+    times = sorted(times)
+    merged = []
+    for t, delta in times:
+        if cnt == 0 and delta == 1:
+            start = t
+        elif cnt == 1 and delta == -1:
+            merged.append((start, t))
+        cnt += delta
+    return merged
 
 def chop_tree(tree, onset, offset):
     """Trim Intervals so that none overlap [``onset``, ``offset``].
