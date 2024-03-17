@@ -13,7 +13,7 @@ def calc_der(ref_rttm, sys_rttm, uem=None,
     sys_turns, _ = load_rttms(sys_rttm)
 
     if uem is not None:
-        uem = load_uem(uems)
+        uem = load_uem(uem)
     else:
         uem = gen_uem(ref_turns, sys_turns)
 
@@ -28,7 +28,5 @@ def calc_der(ref_rttm, sys_rttm, uem=None,
         ref_turns, sys_turns, uem, step=0.010,
         jer_min_ref_dur=0.0, collar=collar,
         ignore_overlaps=ignore_overlaps)
-
-    print(global_scores)
 
     return global_scores

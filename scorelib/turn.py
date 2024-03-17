@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from intervaltree import Interval, IntervalTree
+# from intervaltree import Interval, IntervalTree
 
 from .six import python_2_unicode_compatible
 from .uem import UEM
@@ -247,6 +247,8 @@ def trim_turns(turns, uem=None, score_onset=None, score_offset=None):
             continue
 
         # Remove overlaps with no score regions.
+        new_turns.extend(_trim_turns(list(file_turns), uem[file_id]))
+        """
         noscore_tree = IntervalTree.from_tuples([(0.0, MAX_SESSION_DUR)])
         for score_onset, score_offset in uem[file_id]:
             noscore_tree.chop(score_onset, score_offset)
@@ -271,5 +273,40 @@ def trim_turns(turns, uem=None, score_onset=None, score_offset=None):
                 overlapped_turns, key=lambda x: (x.onset, x.offset)):
             warn('Truncating turn overlapping non-scoring region. TURN: %s' %
                  turn)
+        """
 
+    return new_turns
+
+
+def _trim_turns(turns, uem):
+    timelines = [(t, 'score_begin', -1) for t, _ in uem]
+    timelines += [(t, 'score_end', 1e6) for _, t in uem]
+    timelines += [(turn.onset, 'turn_begin', i) for i, turn in enumerate(turns)]
+    timelines += [(turn.offset, 'turn_end', i) for i, turn in enumerate(turns)]
+    timelines.sort(key=lambda x: (x[0], x[2]))
+
+    in_scoring = False
+    in_turn = dict()
+    new_turns = []
+    for t, comment, turn_id in timelines:
+        if comment == 'score_begin':
+            in_scoring = True
+            for tid in in_turn:
+                in_turn[tid] = t
+        elif comment == 'score_end':
+            in_scoring = False
+            for tid in in_turn:
+                new_turns.append(
+                    Turn(in_turn[tid], t, speaker_id=turns[tid].speaker_id, file_id=turns[tid].file_id)
+                )
+        elif comment == 'turn_begin':
+            in_turn[turn_id] = t
+        elif comment == 'turn_end':
+            if in_scoring:
+                new_turns.append(
+                    Turn(in_turn[turn_id], t, speaker_id=turns[turn_id].speaker_id, file_id=turns[turn_id].file_id)
+                )
+            del in_turn[turn_id]
+    assert len(in_turn) == 0, in_turn
+    assert not in_scoring
     return new_turns
