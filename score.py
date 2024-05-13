@@ -75,14 +75,14 @@ import sys
 
 from tabulate import tabulate
 
-from .scorelib import __version__ as VERSION
-from .scorelib.argparse import ArgumentParser
-from .scorelib.rttm import load_rttm
-from .scorelib.turn import merge_turns, trim_turns
-from .scorelib.score import score
-from .scorelib.six import iterkeys
-from .scorelib.uem import gen_uem, load_uem
-from .scorelib.utils import error, info, warn, xor
+from scorelib import __version__ as VERSION
+from scorelib.argparse import ArgumentParser
+from scorelib.rttm import load_rttm
+from scorelib.turn import merge_turns, trim_turns
+from scorelib.score import score
+from scorelib.six import iterkeys
+from scorelib.uem import gen_uem, load_uem
+from scorelib.utils import error, info, warn, xor
 
 
 class RefRTTMAction(argparse.Action):
