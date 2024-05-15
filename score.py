@@ -189,6 +189,8 @@ def print_table(file_scores, global_scores, n_digits=2):
                  'MISS', # Missed speech
                  'FA', # False alarm speech
                  'CF', # Speaker confusion
+                 '#SPK (est)',  # Estimated number of speakers
+                 '#SPK (gt)',  # Ground-truth number of speakers
                 ]
     rows = sorted(file_scores, key=lambda x: x.file_id)
     rows.append(global_scores._replace(file_id='*** OVERALL ***'))
