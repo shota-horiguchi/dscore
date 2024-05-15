@@ -98,7 +98,8 @@ class Scores(namedtuple(
         'Scores',
         ['file_id', 'der', 'jer', 'bcubed_precision', 'bcubed_recall',
          'bcubed_f1', 'tau_ref_sys', 'tau_sys_ref', 'ce_ref_sys',
-         'ce_sys_ref', 'mi', 'nmi', 'miss', 'falarm', 'confusion'])):
+         'ce_sys_ref', 'mi', 'nmi', 'miss', 'falarm', 'confusion',
+         'num_spk_est', 'num_spk_gt'])):
     """Structure containing metrics.
 
     Parameters
@@ -236,7 +237,7 @@ def score(ref_turns, sys_turns, uem, step=0.010, nats=False, jer_min_ref_dur=0.0
         file_to_ref_durs, file_to_sys_durs, file_to_jer_cm, jer_min_ref_dur)
 
     # Compute clustering metrics.
-    def compute_metrics(fid, cm, der, jer, miss=0.0, falarm=0.0, confusion=0.0):
+    def compute_metrics(fid, cm, der, jer, miss=0.0, falarm=0.0, confusion=0.0, num_spk_est=1, num_spk_gt=1):
         bcubed_precision, bcubed_recall, bcubed_f1 = metrics.bcubed(
             None, None, cm)
         tau_ref_sys, tau_sys_ref = metrics.goodman_kruskal_tau(
@@ -247,14 +248,18 @@ def score(ref_turns, sys_turns, uem, step=0.010, nats=False, jer_min_ref_dur=0.0
         return Scores(
             fid, der, jer, bcubed_precision, bcubed_recall, bcubed_f1,
             tau_ref_sys, tau_sys_ref, ce_ref_sys, ce_sys_ref, mi, nmi,
-            miss, falarm, confusion)
+            miss, falarm, confusion, num_spk_est, num_spk_gt)
     file_scores = []
     for file_id, cm in iteritems(file_to_cm):
+        num_spk_est = len(set([t.speaker_id for t in file_to_sys_turns[file_id]]))
+        num_spk_gt = len(set([t.speaker_id for t in file_to_ref_turns[file_id]]))
         file_scores.append(compute_metrics(
             file_id, cm, file_to_der[file_id], jer=file_to_jer[file_id],
-            miss=miss[file_id], falarm=falarm[file_id], confusion=confusion[file_id]))
+            miss=miss[file_id], falarm=falarm[file_id], confusion=confusion[file_id],
+            num_spk_est=num_spk_est, num_spk_gt=num_spk_gt))
     global_scores = compute_metrics(
         '*** OVERALL ***', global_cm, global_der, global_jer,
-        miss=miss['ALL'], falarm=falarm['ALL'], confusion=confusion['ALL'])
+        miss=miss['ALL'], falarm=falarm['ALL'], confusion=confusion['ALL'],
+        num_spk_est='N/A', num_spk_gt='N/A')
 
     return file_scores, global_scores
