@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from intervaltree import Interval, IntervalTree
+# from intervaltree import Interval, IntervalTree
 
 from .six import python_2_unicode_compatible
 from .uem import UEM
@@ -95,16 +95,17 @@ def merge_turns(turns):
     for (file_id, speaker_id), speaker_turns in groupby(
             turns, lambda x: (x.file_id, x.speaker_id)):
         speaker_turns = list(speaker_turns)
-        speaker_it = IntervalTree.from_tuples(
-            [(turn.onset, turn.offset) for turn in speaker_turns])
+        speaker_it = [(turn.onset, turn.offset) for turn in speaker_turns]
+        # speaker_it = IntervalTree.from_tuples(
+        #     [(turn.onset, turn.offset) for turn in speaker_turns])
         n_turns_pre = len(speaker_it)
-        speaker_it.merge_overlaps()
+        speaker_it = _merge_turns(speaker_it)
         n_turns_post = len(speaker_it)
         if n_turns_post < n_turns_pre:
             speaker_turns = []
             for intrvl in speaker_it:
                 speaker_turns.append(
-                    Turn(intrvl.begin, intrvl.end, speaker_id=speaker_id,
+                    Turn(intrvl[0], intrvl[1], speaker_id=speaker_id,
                          file_id=file_id))
             speaker_turns = sorted(
                 speaker_turns, key=lambda x: (x.onset, x.offset))
@@ -113,6 +114,18 @@ def merge_turns(turns):
         new_turns.extend(speaker_turns)
     return new_turns
 
+def _merge_turns(turns):
+    cnt = 0
+    times = [(t, 1) for t, _ in turns] + [(t, -1) for _, t in turns]
+    times = sorted(times)
+    merged = []
+    for t, delta in times:
+        if cnt == 0 and delta == 1:
+            start = t
+        elif cnt == 1 and delta == -1:
+            merged.append((start, t))
+        cnt += delta
+    return merged
 
 def chop_tree(tree, onset, offset):
     """Trim Intervals so that none overlap [``onset``, ``offset``].
@@ -234,6 +247,8 @@ def trim_turns(turns, uem=None, score_onset=None, score_offset=None):
             continue
 
         # Remove overlaps with no score regions.
+        new_turns.extend(_trim_turns(list(file_turns), uem[file_id]))
+        """
         noscore_tree = IntervalTree.from_tuples([(0.0, MAX_SESSION_DUR)])
         for score_onset, score_offset in uem[file_id]:
             noscore_tree.chop(score_onset, score_offset)
@@ -258,5 +273,40 @@ def trim_turns(turns, uem=None, score_onset=None, score_offset=None):
                 overlapped_turns, key=lambda x: (x.onset, x.offset)):
             warn('Truncating turn overlapping non-scoring region. TURN: %s' %
                  turn)
+        """
 
+    return new_turns
+
+
+def _trim_turns(turns, uem):
+    timelines = [(t, 'score_begin', -1) for t, _ in uem]
+    timelines += [(t, 'score_end', 1e6) for _, t in uem]
+    timelines += [(turn.onset, 'turn_begin', i) for i, turn in enumerate(turns)]
+    timelines += [(turn.offset, 'turn_end', i) for i, turn in enumerate(turns)]
+    timelines.sort(key=lambda x: (x[0], x[2]))
+
+    in_scoring = False
+    in_turn = dict()
+    new_turns = []
+    for t, comment, turn_id in timelines:
+        if comment == 'score_begin':
+            in_scoring = True
+            for tid in in_turn:
+                in_turn[tid] = t
+        elif comment == 'score_end':
+            in_scoring = False
+            for tid in in_turn:
+                new_turns.append(
+                    Turn(in_turn[tid], t, speaker_id=turns[tid].speaker_id, file_id=turns[tid].file_id)
+                )
+        elif comment == 'turn_begin':
+            in_turn[turn_id] = t
+        elif comment == 'turn_end':
+            if in_scoring:
+                new_turns.append(
+                    Turn(in_turn[turn_id], t, speaker_id=turns[turn_id].speaker_id, file_id=turns[turn_id].file_id)
+                )
+            del in_turn[turn_id]
+    assert len(in_turn) == 0, in_turn
+    assert not in_scoring
     return new_turns
